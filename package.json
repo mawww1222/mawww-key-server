@@ -1,7 +1,7 @@
 {
   "name": "mawww-key-server",
   "version": "1.0.0",
-  "description": "MawwwHub Key System API",
+  "description": "MawwwHub Key System",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
