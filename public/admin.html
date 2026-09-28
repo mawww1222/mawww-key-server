@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>MawwwHub - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 min-h-screen p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-purple-400 mb-6">🛡️ Admin Panel</h1>
+
+        <div id="loginBox" class="bg-slate-800 rounded-xl p-6 max-w-md">
+            <h2 class="text-xl font-bold mb-4 text-white">Login Admin</h2>
+            <input id="apiKeyInput" type="password" placeholder="API Key"
+                class="w-full bg-slate-900 border border-purple-500 rounded-lg px-4 py-2 mb-3 text-white">
+            <button onclick="login()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg">Login</button>
+        </div>
+
+        <div id="dashboard" class="hidden">
+            <div class="flex gap-3 mb-6">
+                <button onclick="createKey()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 rounded-lg">➕ Create Key</button>
+                <button onclick="loadKeys()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg">🔄 Refresh</button>
+                <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-lg">🚪 Logout</button>
+            </div>
+            <div id="keysTable" class="bg-slate-800 rounded-xl p-4"></div>
+        </div>
+    </div>
+
+    <script>
+        let apiKey = "";
+        function login() {
+            apiKey = document.getElementById("apiKeyInput").value;
+            localStorage.setItem("mawww_admin_key", apiKey);
+            showDashboard();
+        }
+        function logout() {
+            apiKey = "";
+            localStorage.removeItem("mawww_admin_key");
+            document.getElementById("loginBox").classList.remove("hidden");
+            document.getElementById("dashboard").classList.add("hidden");
+        }
+        function showDashboard() {
+            document.getElementById("loginBox").classList.add("hidden");
+            document.getElementById("dashboard").classList.remove("hidden");
+            loadKeys();
+        }
+        async function loadKeys() {
+            const res = await fetch(`/api/admin/keys?api_key=${apiKey}`);
+            if (!res.ok) { alert("API Key salah!"); logout(); return; }
+            const data = await res.json();
+            let html = `<table class="w-full text-sm text-white">
+                <thead class="text-purple-400 border-b border-slate-700"><tr>
+                    <th class="text-left py-2">Key</th><th class="text-left py-2">HWID</th>
+                    <th class="text-left py-2">Expires</th><th class="text-left py-2">Status</th>
+                    <th class="text-left py-2">Used</th><th class="text-right py-2">Action</th>
+                </tr></thead><tbody>`;
+            data.keys.forEach(k => {
+                const exp = k.expires_at ? new Date(k.expires_at * 1000).toLocaleString() : "Never";
+                const hwid = k.hwid ? k.hwid.substring(0, 16) + "..." : "—";
+                html += `<tr class="border-b border-slate-700">
+                    <td class="py-2 font-mono text-purple-300">${k.key}</td>
+                    <td class="py-2 text-slate-400 text-xs">${hwid}</td>
+                    <td class="py-2 text-slate-400 text-xs">${exp}</td>
+                    <td class="py-2">${k.status === 'active' ? '✅' : '❌'}</td>
+                    <td class="py-2">${k.used_count}</td>
+                    <td class="py-2 text-right">
+                        <button onclick="resetHwid(${k.id})" class="text-yellow-400 text-xs mr-2">Reset</button>
+                        <button onclick="deleteKey(${k.id})" class="text-red-400 text-xs">Hapus</button>
+                    </td></tr>`;
+            });
+            html += "</tbody></table>";
+            document.getElementById("keysTable").innerHTML = html;
+        }
+        async function createKey() {
+            const hours = prompt("Berapa jam? (kosong = permanent)");
+            const res = await fetch(`/api/admin/create?api_key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ duration_hours: hours ? parseInt(hours) : null })
+            });
+            const data = await res.json();
+            if (data.ok) { alert("Key: " + data.key); loadKeys(); }
+        }
+        async function deleteKey(id) {
+            if (!confirm("Hapus?")) return;
+            await fetch(`/api/admin/delete/${id}?api_key=${apiKey}`, { method: "DELETE" });
+            loadKeys();
+        }
+        async function resetHwid(id) {
+            if (!confirm("Reset HWID?")) return;
+            await fetch(`/api/admin/reset/${id}?api_key=${apiKey}`, { method: "POST" });
+            loadKeys();
+        }
+        const saved = localStorage.getItem("mawww_admin_key");
+        if (saved) { apiKey = saved; showDashboard(); }
+    </script>
+</body>
+</html>
