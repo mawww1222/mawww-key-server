@@ -2,97 +2,306 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>MawwwHub - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MawwwHub - Owner Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 min-h-screen p-8">
-    <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold text-purple-400 mb-6">🛡️ Admin Panel</h1>
-
-        <div id="loginBox" class="bg-slate-800 rounded-xl p-6 max-w-md">
-            <h2 class="text-xl font-bold mb-4 text-white">Login Admin</h2>
-            <input id="apiKeyInput" type="password" placeholder="API Key"
-                class="w-full bg-slate-900 border border-purple-500 rounded-lg px-4 py-2 mb-3 text-white">
-            <button onclick="login()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg">Login</button>
-        </div>
-
-        <div id="dashboard" class="hidden">
-            <div class="flex gap-3 mb-6">
-                <button onclick="createKey()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 rounded-lg">➕ Create Key</button>
-                <button onclick="loadKeys()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg">🔄 Refresh</button>
-                <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-lg">🚪 Logout</button>
-            </div>
-            <div id="keysTable" class="bg-slate-800 rounded-xl p-4"></div>
+<body class="bg-slate-900 min-h-screen">
+    <!-- LOGIN -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-slate-800 border-2 border-purple-500 rounded-2xl p-8 w-full max-w-md">
+            <h1 class="text-3xl font-bold text-purple-400 text-center mb-2">🛡️</h1>
+            <h2 class="text-xl font-bold text-white text-center mb-6">Owner Panel</h2>
+            <input id="passInput" type="password" placeholder="Password"
+                class="w-full bg-slate-900 border border-purple-500 rounded-lg px-4 py-3 mb-3 text-white focus:outline-none focus:border-purple-300"
+                onkeypress="if(event.key==='Enter')doLogin()">
+            <button onclick="doLogin()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg">
+                Login
+            </button>
+            <p id="loginMsg" class="text-red-400 text-sm text-center mt-3"></p>
         </div>
     </div>
 
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="hidden p-4 md:p-8 max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-purple-400">🛡️ Owner Panel</h1>
+            <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                Logout
+            </button>
+        </div>
+
+        <!-- STATS -->
+        <div id="stats" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"></div>
+
+        <!-- GENERATE -->
+        <div class="bg-slate-800 border-2 border-purple-500 rounded-2xl p-6 mb-6">
+            <h2 class="text-xl font-bold text-purple-300 mb-4">➕ Generate Key</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">Durasi</label>
+                    <select id="durType" onchange="onDurChange()"
+                        class="w-full bg-slate-900 border border-purple-500 rounded-lg px-3 py-2 text-white">
+                        <option value="permanent">♾️ Permanent</option>
+                        <option value="days">📅 Hari (custom)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">Jumlah Hari</label>
+                    <input id="durDays" type="number" value="7" min="1"
+                        class="w-full bg-slate-900 border border-purple-500 rounded-lg px-3 py-2 text-white disabled:opacity-40">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">Jumlah Key</label>
+                    <input id="qty" type="number" value="1" min="1" max="100"
+                        class="w-full bg-slate-900 border border-purple-500 rounded-lg px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">Note (opsional)</label>
+                    <input id="note" type="text" placeholder="pembeli @user"
+                        class="w-full bg-slate-900 border border-purple-500 rounded-lg px-3 py-2 text-white">
+                </div>
+            </div>
+            <button onclick="generateKeys()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">
+                🎁 Generate Key
+            </button>
+            <div id="genResult" class="mt-4"></div>
+        </div>
+
+        <!-- KEY LIST -->
+        <div class="bg-slate-800 border-2 border-purple-500 rounded-2xl p-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                <h2 class="text-xl font-bold text-purple-300">📋 Daftar Key</h2>
+                <div class="flex gap-2">
+                    <input id="searchInput" placeholder="🔍 Cari key/hwid/note"
+                        class="bg-slate-900 border border-purple-500 rounded-lg px-3 py-2 text-white text-sm"
+                        oninput="debounceLoad()">
+                    <select id="statusFilter" onchange="loadKeys()"
+                        class="bg-slate-900 border border-purple-500 rounded-lg px-3 py-2 text-white text-sm">
+                        <option value="all">Semua</option>
+                        <option value="active">Aktif</option>
+                        <option value="disabled">Nonaktif</option>
+                    </select>
+                    <button onclick="loadKeys()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                        🔄
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <div id="keysTable"></div>
+            </div>
+        </div>
+
+        <p class="text-center text-xs text-slate-500 mt-8">© 2026 MawwwHub Owner Panel</p>
+    </div>
+
     <script>
-        let apiKey = "";
-        function login() {
-            apiKey = document.getElementById("apiKeyInput").value;
-            localStorage.setItem("mawww_admin_key", apiKey);
-            showDashboard();
+        let adminPass = localStorage.getItem("mawww_admin") || "";
+        let debounceTimer = null;
+
+        //========================================================--
+        // LOGIN
+        //========================================================--
+        async function doLogin() {
+            const pass = document.getElementById("passInput").value;
+            const res = await fetch("/api/admin/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password: pass })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                adminPass = pass;
+                localStorage.setItem("mawww_admin", pass);
+                showDashboard();
+            } else {
+                document.getElementById("loginMsg").textContent = "❌ " + (data.msg || "Login gagal");
+            }
         }
+
         function logout() {
-            apiKey = "";
-            localStorage.removeItem("mawww_admin_key");
-            document.getElementById("loginBox").classList.remove("hidden");
+            adminPass = "";
+            localStorage.removeItem("mawww_admin");
+            document.getElementById("loginScreen").classList.remove("hidden");
             document.getElementById("dashboard").classList.add("hidden");
         }
+
         function showDashboard() {
-            document.getElementById("loginBox").classList.add("hidden");
+            document.getElementById("loginScreen").classList.add("hidden");
             document.getElementById("dashboard").classList.remove("hidden");
             loadKeys();
         }
-        async function loadKeys() {
-            const res = await fetch(`/api/admin/keys?api_key=${apiKey}`);
-            if (!res.ok) { alert("API Key salah!"); logout(); return; }
+
+        //========================================================--
+        // GENERATE
+        //========================================================--
+        function onDurChange() {
+            const type = document.getElementById("durType").value;
+            const days = document.getElementById("durDays");
+            days.disabled = (type === "permanent");
+        }
+        onDurChange();
+
+        async function generateKeys() {
+            const type = document.getElementById("durType").value;
+            const days = parseInt(document.getElementById("durDays").value) || 0;
+            const qty = parseInt(document.getElementById("qty").value) || 1;
+            const note = document.getElementById("note").value;
+
+            const res = await fetch("/api/admin/generate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-admin-pass": adminPass
+                },
+                body: JSON.stringify({ duration_type: type, duration_days: days, quantity: qty, note })
+            });
             const data = await res.json();
-            let html = `<table class="w-full text-sm text-white">
-                <thead class="text-purple-400 border-b border-slate-700"><tr>
-                    <th class="text-left py-2">Key</th><th class="text-left py-2">HWID</th>
-                    <th class="text-left py-2">Expires</th><th class="text-left py-2">Status</th>
-                    <th class="text-left py-2">Used</th><th class="text-right py-2">Action</th>
-                </tr></thead><tbody>`;
+
+            if (data.ok) {
+                const keysList = data.keys.map(k =>
+                    `<div class="flex justify-between items-center bg-slate-900 rounded p-2 mb-1">
+                        <span class="font-mono text-green-300 text-sm select-all">${k}</span>
+                        <button onclick="copyKey('${k}')" class="text-xs text-purple-400 hover:text-purple-300">📋 Copy</button>
+                    </div>`
+                ).join("");
+                document.getElementById("genResult").innerHTML = `
+                    <div class="bg-green-900/40 border border-green-500 rounded-lg p-4">
+                        <p class="text-green-400 font-bold mb-2">✅ ${data.count} key berhasil dibuat:</p>
+                        ${keysList}
+                    </div>`;
+                loadKeys();
+            } else {
+                document.getElementById("genResult").innerHTML = `<div class="bg-red-900/40 border border-red-500 rounded-lg p-3 text-red-300">❌ ${data.msg}</div>`;
+            }
+        }
+
+        function copyKey(k) {
+            navigator.clipboard.writeText(k);
+        }
+
+        //========================================================--
+        // LOAD KEYS
+        //========================================================--
+        function debounceLoad() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(loadKeys, 300);
+        }
+
+        async function loadKeys() {
+            const search = document.getElementById("searchInput").value;
+            const status = document.getElementById("statusFilter").value;
+            const params = new URLSearchParams({ admin_pass: adminPass, search, status });
+
+            const res = await fetch("/api/admin/keys?" + params);
+            if (!res.ok) { logout(); return; }
+            const data = await res.json();
+
+            // Stats
+            document.getElementById("stats").innerHTML = `
+                <div class="bg-slate-800 border border-purple-500 rounded-xl p-4">
+                    <p class="text-xs text-slate-400">Total</p>
+                    <p class="text-2xl font-bold text-purple-400">${data.stats.total}</p>
+                </div>
+                <div class="bg-slate-800 border border-green-500 rounded-xl p-4">
+                    <p class="text-xs text-slate-400">Aktif</p>
+                    <p class="text-2xl font-bold text-green-400">${data.stats.active}</p>
+                </div>
+                <div class="bg-slate-800 border border-blue-500 rounded-xl p-4">
+                    <p class="text-xs text-slate-400">Bound (HWID)</p>
+                    <p class="text-2xl font-bold text-blue-400">${data.stats.bound}</p>
+                </div>
+                <div class="bg-slate-800 border border-yellow-500 rounded-xl p-4">
+                    <p class="text-xs text-slate-400">Permanent</p>
+                    <p class="text-2xl font-bold text-yellow-400">${data.stats.permanent}</p>
+                </div>
+            `;
+
+            if (!data.keys.length) {
+                document.getElementById("keysTable").innerHTML = `<p class="text-slate-500 text-center py-8">Belum ada key</p>`;
+                return;
+            }
+
+            let html = `<table class="w-full text-sm text-white min-w-[800px]">
+                <thead class="text-purple-400 border-b border-slate-700 text-left">
+                    <tr>
+                        <th class="py-2">Key</th>
+                        <th class="py-2">Durasi</th>
+                        <th class="py-2">Expires</th>
+                        <th class="py-2">HWID</th>
+                        <th class="py-2">Note</th>
+                        <th class="py-2">Status</th>
+                        <th class="py-2 text-right">Aksi</th>
+                    </tr>
+                </thead><tbody>`;
+
             data.keys.forEach(k => {
-                const exp = k.expires_at ? new Date(k.expires_at * 1000).toLocaleString() : "Never";
-                const hwid = k.hwid ? k.hwid.substring(0, 16) + "..." : "—";
-                html += `<tr class="border-b border-slate-700">
-                    <td class="py-2 font-mono text-purple-300">${k.key}</td>
-                    <td class="py-2 text-slate-400 text-xs">${hwid}</td>
+                const exp = k.expires_at
+                    ? new Date(k.expires_at * 1000).toLocaleString("id-ID")
+                    : "♾️ Permanent";
+                const hwid = k.hwid ? k.hwid.substring(0, 12) + "..." : "—";
+                const isExpired = k.expires_at && k.expires_at < Math.floor(Date.now()/1000);
+                const statusBadge = isExpired
+                    ? `<span class="text-red-400">⏰ Expired</span>`
+                    : (k.status === "active"
+                        ? `<span class="text-green-400">✅ Aktif</span>`
+                        : `<span class="text-red-400">❌ Off</span>`);
+
+                html += `<tr class="border-b border-slate-700 hover:bg-slate-700/30">
+                    <td class="py-2 font-mono text-purple-300 text-xs">${k.key}</td>
+                    <td class="py-2 text-slate-400 text-xs">${k.duration_type === "permanent" ? "♾️" : k.duration_days + "h"}</td>
                     <td class="py-2 text-slate-400 text-xs">${exp}</td>
-                    <td class="py-2">${k.status === 'active' ? '✅' : '❌'}</td>
-                    <td class="py-2">${k.used_count}</td>
-                    <td class="py-2 text-right">
-                        <button onclick="resetHwid(${k.id})" class="text-yellow-400 text-xs mr-2">Reset</button>
-                        <button onclick="deleteKey(${k.id})" class="text-red-400 text-xs">Hapus</button>
-                    </td></tr>`;
+                    <td class="py-2 text-slate-400 text-xs font-mono">${hwid}</td>
+                    <td class="py-2 text-slate-400 text-xs">${k.note || "—"}</td>
+                    <td class="py-2 text-xs">${statusBadge}</td>
+                    <td class="py-2 text-right whitespace-nowrap">
+                        <button onclick="copyKey('${k.key}')" class="text-purple-400 text-xs mr-2" title="Copy">📋</button>
+                        <button onclick="resetHwid(${k.id})" class="text-yellow-400 text-xs mr-2" title="Reset HWID">🔄</button>
+                        <button onclick="extendKey(${k.id})" class="text-blue-400 text-xs mr-2" title="Extend">➕</button>
+                        <button onclick="toggleStatus(${k.id})" class="text-orange-400 text-xs mr-2" title="Toggle">⏯️</button>
+                        <button onclick="deleteKey(${k.id})" class="text-red-400 text-xs" title="Delete">🗑️</button>
+                    </td>
+                </tr>`;
             });
             html += "</tbody></table>";
             document.getElementById("keysTable").innerHTML = html;
         }
-        async function createKey() {
-            const hours = prompt("Berapa jam? (kosong = permanent)");
-            const res = await fetch(`/api/admin/create?api_key=${apiKey}`, {
+
+        //========================================================--
+        // ACTIONS
+        //========================================================--
+        async function deleteKey(id) {
+            if (!confirm("Hapus key ini?")) return;
+            await fetch(`/api/admin/delete/${id}?admin_pass=${adminPass}`, { method: "DELETE" });
+            loadKeys();
+        }
+
+        async function resetHwid(id) {
+            if (!confirm("Reset HWID key ini?")) return;
+            await fetch(`/api/admin/reset/${id}?admin_pass=${adminPass}`, { method: "POST" });
+            loadKeys();
+        }
+
+        async function toggleStatus(id) {
+            await fetch(`/api/admin/toggle/${id}?admin_pass=${adminPass}`, { method: "POST" });
+            loadKeys();
+        }
+
+        async function extendKey(id) {
+            const days = prompt("Tambah berapa hari?", "7");
+            if (!days) return;
+            await fetch(`/api/admin/extend/${id}?admin_pass=${adminPass}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ duration_hours: hours ? parseInt(hours) : null })
+                body: JSON.stringify({ days: parseInt(days) })
             });
-            const data = await res.json();
-            if (data.ok) { alert("Key: " + data.key); loadKeys(); }
-        }
-        async function deleteKey(id) {
-            if (!confirm("Hapus?")) return;
-            await fetch(`/api/admin/delete/${id}?api_key=${apiKey}`, { method: "DELETE" });
             loadKeys();
         }
-        async function resetHwid(id) {
-            if (!confirm("Reset HWID?")) return;
-            await fetch(`/api/admin/reset/${id}?api_key=${apiKey}`, { method: "POST" });
-            loadKeys();
-        }
-        const saved = localStorage.getItem("mawww_admin_key");
-        if (saved) { apiKey = saved; showDashboard(); }
+
+        //========================================================--
+        // INIT
+        //========================================================--
+        if (adminPass) showDashboard();
     </script>
 </body>
 </html>
